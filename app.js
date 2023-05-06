@@ -35,7 +35,7 @@ const userSchema = new mongoose.Schema({
   email: String,
   password: String,
   googleId: String,
-  secret: String
+  secret: [String]
 });
 
 userSchema.plugin(passportLocalMongoose);
@@ -88,12 +88,22 @@ app.get('/auth/google',
   })
 );
 
+app.get("/secrets", (req, res) => {
+  
+  User.find({"secret": {$ne: null}}).then(foundUsers =>{
+    
+        res.render("secrets", {usersWithSecrets: foundUsers});
+      
+      }).catch(err=> console.log(err));
+    });
+    
+
+
 app.get('/auth/google/secrets',
   passport.authenticate('google', {
     failureRedirect: '/login'
   }),
   function (req, res) {
-    // Successful authentication, redirect home.
     res.redirect('/secrets');
   });
 
@@ -116,12 +126,10 @@ app.get("/secrets", function (req, res) {
 app.post("/register", function (req, res) {
 
 
-  User.register({
-    email: req.body.username
-  }, req.body.password, function (err, user) {
+  User.register({ username: req.body.username }, req.body.password, function (err, user) {
     if (err) {
       console.log(err);
-      res.render("/register");
+      res.redirect("/register");
     } else {
       passport.authenticate("local")(req, res, function () {
         res.redirect("/secrets");
@@ -153,21 +161,9 @@ app.post("/login", function (req, res) {
   })
 });
 
-app.get("/secrets", function (req, res) {
-  User.find({
-    "secret": {
-      $ne: null
-    }
-  }, function (err, foundUsers) {
-    if (err) {
-      console.log(err);
-    } else {
-      if (foundUsers) {
-        res.render("secrets", {usersWithSecret:foundUsers});
-      }
-    }
-  });
-});
+
+
+
 
 app.get("/submit", function (req, res) {
 
@@ -185,7 +181,8 @@ app.post("/submit", function (req, res) {
   User.findById(req.user.id)
     .then(founduser => {
       if (founduser) {
-        founduser.secret = submittedSecret;
+        founduser.secret.push(submittedSecret);
+        console.log(founduser);
         founduser.save().then(
           res.redirect("/secrets")
         )
@@ -204,6 +201,8 @@ app.get("/logout", function (req, res) {
 
   res.redirect('/');
 });
+
+
 
 
 
